@@ -1,0 +1,1943 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0b11d84a-459e-4806-951a-358d3c6f742e",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -2752,
+        368
+      ],
+      "webhookId": "c2f817f1-435b-42e8-8436-39382d37cb21"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.body.Body}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "d853cb7f-4aa5-49f8-8dee-a6e14faf0e39",
+      "name": "Check Message Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -2544,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The customer is {{ $json.profile_name }}\nHere is the full conversation history with this customer (oldest to newest): {{ $json.conversation_history }}\n\nClassify the intent, extract details, and generate your JSON response.\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a sales representative for a small jewellery business. A customer’s message is provided below.  \nYour task: classify the intent, extract details, and reply appropriately.  \n\nIntents:  \n- order_query → product-related question which you are unable to answer directly. If you know the answer respond and choose continue_conversation  \n- order_place → product name + delivery address + payment mode provided (use {{ $json.profile_name }} as customer name)  \n- order_update → change details of an existing order  \n- order_track → ask order status (must have order ID or use to check)  \n- order_cancel → cancel an existing order  \n- order_feedback → feedback on a received order  \n- schedule_demo → meeting/online demo (confirm time, date, mode)  \n- general_faq → jewellery care/maintenance questions  \n- other → irrelevant/unknown queries  \n- continue_conversation → details missing or natural continuation without escalation  \n\nRules:  \n- Always extract available details:  \n  - order_id (if mentioned)  \n  - product_name  \n  - customer_name = {{ $json.profile_name }}  \n  - contact_number = {{ $json.user_id }}\n  - delivery_address  \n  - quantity (default = 1)  \n  - amount (default = 2500)  \n  - payment_mode (default = online)\n  - feedback (optional)  \n- If required details are missing, ask for them and set intent = continue_conversation.  \n- Only confirm **order_place** or **order_track** when all required details are available.  \n\nOutput format (strict JSON):  \n{\n  \"response_to_customer\": \"Reply message to the customer\",\n  \"intent\": \"order_query | order_place | order_update | order_track | order_cancel | order_feedback | schedule_demo | general_faq | other | continue_conversation\",\n  \"order_id\": \"value if available\",\n  \"product_name\": \"value if available\",\n  \"customer_name\": \"{{ $json.profile_name }}\",\n  \"contact_number\": \"{{ $json.user_id }}\"\n  \"delivery_address\": \"value if available\",\n  \"quantity\": \"value or default 1\",\n  \"amount\": \"value or default 2500\",\n  \"payment_mode\": \"value or default online\",\n  \"feedback\": \"value if available\",\n  \"conversation_history\": {{ $json.conversation_history }}\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -1712,
+        352
+      ],
+      "id": "21b33baa-c217-4af0-aad9-8f782e3c9fd8",
+      "name": "Sales Rep Conversational Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1744,
+        544
+      ],
+      "id": "13ca1e63-666a-4f12-8e16-ec46b6865993",
+      "name": "Google Gemini Chat Model"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"name\": \"classify_customer_message\",\n  \"description\": \"Classify the intent of customer message and extract details\",\n  \"parameters\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"response_to_customer\": {\n        \"type\": \"string\",\n        \"description\": \"The reply message to send back to the customer.\"\n      },\n      \"intent\": {\n        \"type\": \"string\",\n        \"enum\": [\n          \"order_query\",\n          \"order_place\",\n          \"order_update\",\n          \"order_track\",\n          \"order_cancel\",\n          \"order_feedback\",\n          \"schedule_demo\",\n          \"general_faq\",\n          \"other\",\n          \"continue_conversation\"\n        ]\n      },\n      \"order_id\": { \"type\": \"string\" },\n      \"product_name\": { \"type\": \"string\" },\n      \"customer_name\": { \"type\": \"string\" },\n      \"delivery_address\": { \"type\": \"string\" },\n      \"quantity\": { \"type\": \"integer\", \"default\": 1 },\n      \"amount\": { \"type\": \"number\", \"default\": 2500 },\n      \"payment_mode\": { \"type\": \"string\", \"default\": \"online\" },\n      \"feedback\": { \"type\": \"string\" },\n      \"conversation_history\": {\"type\":\"string\"}\n    },\n    \"required\": [\"response_to_customer\", \"intent\", \"customer_name\", \"conversation_history\"]\n  }\n}\n",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1600,
+        544
+      ],
+      "id": "bd654ad4-95e3-4b8a-ad84-f1e7fcb43902",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "errorMessage": "False trigger or empty message"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -2272,
+        544
+      ],
+      "id": "158b5e05-98fc-4017-a295-97c3809f8aa5",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "unit": "seconds"
+      },
+      "id": "1ac27648-fdd6-4512-baae-4970a66c451a",
+      "name": "Wait for 60s to batch messages",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -2272,
+        352
+      ],
+      "webhookId": "6ae5ed40-fd08-469c-a4c7-90fb0b5ab69a"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.output.intent }}",
+              "operation": "notEqual",
+              "value2": "continue_conversation"
+            }
+          ]
+        }
+      },
+      "id": "b494dec8-46fa-4d96-8e0b-11f7dcaac60a",
+      "name": "Is Conversation Over?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1376,
+        352
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1600,
+        672
+      ],
+      "id": "baae14d3-5faf-4b06-8dfa-3556ad92a10f",
+      "name": "Google Gemini Chat Model1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4ef3fb3e-f224-49fa-ab29-863346335a79",
+                    "rightValue": "order_place"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6085190d-7d0d-475c-91c7-9cd38cf4a47b",
+                    "rightValue": "order_track"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cd375ac2-94ca-4ea1-bd16-9dcadda5bf0b",
+                    "rightValue": "order_feedback"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "843d6752-58c6-4f24-ac0b-d502adf6fed1",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "other",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "0c0c098f-88cc-4e51-9074-79e7b99bf0c7",
+                    "rightValue": "order_update"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8fc9b628-b488-4ed0-91f6-178f26ced5ea",
+                    "rightValue": "order_cancel"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b053d7ec-bcf0-4c27-bd50-2553615fcfee",
+                    "rightValue": "order_query"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8d3c3490-7ec5-46e3-b0d6-2e32747547f4",
+                    "rightValue": "general_faq"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e42ada38-d3c3-429f-b058-99e00835b262",
+                    "rightValue": "schedule_demo"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1184,
+        224
+      ],
+      "id": "814c1000-4eac-4432-90cd-1d81d3fd258a",
+      "name": "Switch on Intent"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GCkIYeiEjZJ80I5UvSHDvoUuIAKZFQiAlP0k0Apmg44",
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GCkIYeiEjZJ80I5UvSHDvoUuIAKZFQiAlP0k0Apmg44/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GCkIYeiEjZJ80I5UvSHDvoUuIAKZFQiAlP0k0Apmg44/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Last Response to Customer": "={{ $json.output.response_to_customer }}",
+            "Feedback": "={{ $json.output.feedback }}",
+            "Delivery Address": "={{ $json.output.delivery_address }}",
+            "Payment mode": "={{ $json.output.payment_mode }}",
+            "Amount": "={{ $json.output.amount }}",
+            "Quantity": "={{ $json.output.quantity }}",
+            "Product": "={{ $json.output.product_name }}",
+            "Contact Number": "={{ $json.output.contact_number }}",
+            "Customer Name": "={{ $json.output.customer_name }}",
+            "Order ID": "={{ $json.output.order_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Contact Number",
+              "displayName": "Contact Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Product",
+              "displayName": "Product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment mode",
+              "displayName": "Payment mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Delivery Address",
+              "displayName": "Delivery Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estimated Delivery Date",
+              "displayName": "Estimated Delivery Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Feedback",
+              "displayName": "Feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Response to Customer",
+              "displayName": "Last Response to Customer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3102a4e4-3b2a-42df-9e1f-8a84beb29a25",
+      "name": "Add Order to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -784,
+        -80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JA29MwWbC2548xRn",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1GCkIYeiEjZJ80I5UvSHDvoUuIAKZFQiAlP0k0Apmg44",
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GCkIYeiEjZJ80I5UvSHDvoUuIAKZFQiAlP0k0Apmg44/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GCkIYeiEjZJ80I5UvSHDvoUuIAKZFQiAlP0k0Apmg44/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Order ID",
+              "lookupValue": "={{ $json.output.order_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "767041dc-e1c1-46ae-a4c2-23cde0b9ae4d",
+      "name": "Find Order in Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -768,
+        240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JA29MwWbC2548xRn",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Summarize the conversation history so that the admin understands the context clearly.\n\n<Conversation_History>\n{{ $json.output.conversation_history }}\n</Conversation_History>\n\nSend back the following string exactly in this format (do not modify the handlebars, just insert the summarized conversation in place of *summarized conversation history*):\n\n{{ $json.output.intent }} request raised by {{ $json.output.customer_name }}. Context: *summarized conversation history*. Contact details: {{ $json.output.contact_number }}",
+        "options": {}
+      },
+      "id": "58322aa4-de44-4d81-a811-885c3490a0c2",
+      "name": "Summarize Chat History for Admin",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -768,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "from": "+12565619131",
+        "to": "+919967622465",
+        "message": "={{ $json.output.response_to_customer }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -1264,
+        640
+      ],
+      "id": "f389cba0-101f-4734-89de-bc152acda907",
+      "name": "Send reply to customer",
+      "credentials": {
+        "twilioApi": {
+          "id": "I0nqH7oWnqpmAsR1",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "+12565619131",
+        "to": "=+{{ $json['Contact Number'] }}",
+        "message": "={{ $json['Last Response to Customer'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        -176
+      ],
+      "id": "63de4b33-f978-49ce-ae1b-708abd21db95",
+      "name": "Send Order Confirmation to Customer",
+      "credentials": {
+        "twilioApi": {
+          "id": "2Oq4YOq50S45XyJk",
+          "name": "Twilio account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "+12565619131",
+        "to": "+919967622465",
+        "message": "=NEW ORDER PLACED! Customer: {{ $json['Customer Name'] }} Product: {{ $json.Product }} Amount: {{ $json.Amount }} Payment mode: {{ $json['Payment mode'] }} Address: {{ $json['Delivery Address'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        16
+      ],
+      "id": "918bee54-858e-4d1e-91ba-2d325b2f6b51",
+      "name": "Send New Order Notification to Admin",
+      "credentials": {
+        "twilioApi": {
+          "id": "2Oq4YOq50S45XyJk",
+          "name": "Twilio account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "+12565619131",
+        "to": "=+{{ $json['Contact Number'] }}",
+        "message": "=Your order for {{$json[\"Product\"]}} is {{$json[\"Status\"]}} {{ $json[\"Estimated Delivery Date\"] ? \"and will be delivered by \" + $json[\"Estimated Delivery Date\"] : \"\" }}.\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        240
+      ],
+      "id": "687a3f9d-7b20-4c2f-bd6b-9e6d96f6e7af",
+      "name": "Send Tracking Info to Customer",
+      "credentials": {
+        "twilioApi": {
+          "id": "2Oq4YOq50S45XyJk",
+          "name": "Twilio account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        864
+      ],
+      "id": "f92f3adc-77e5-4b6e-8b38-26c0a770d6de",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "UGK7JqMJ7Xo4PZqk",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "0 - Order Place\n1 - Track Order\n2 - Order Feedback\n3 - Others\n4 - Order Update\n5 - Order Cancel\n6 - Order Query\n7 - General FAQ\n8 - Schedule Demo",
+        "height": 192,
+        "width": 160
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1216,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "8dc12641-3d88-4423-ab87-f90875bcecbd",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1GCkIYeiEjZJ80I5UvSHDvoUuIAKZFQiAlP0k0Apmg44",
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GCkIYeiEjZJ80I5UvSHDvoUuIAKZFQiAlP0k0Apmg44/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GCkIYeiEjZJ80I5UvSHDvoUuIAKZFQiAlP0k0Apmg44/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Last Response to Customer": "={{ $json.output.response_to_customer }}",
+            "Feedback": "={{ $json.output.feedback }}",
+            "Delivery Address": "={{ $json.output.delivery_address }}",
+            "Payment mode": "={{ $json.output.payment_mode }}",
+            "Amount": "={{ $json.output.amount }}",
+            "Quantity": "={{ $json.output.quantity }}",
+            "Product": "={{ $json.output.product_name }}",
+            "Contact Number": "={{ $json.output.contact_number }}",
+            "Customer Name": "={{ $json.output.customer_name }}",
+            "Order ID": "={{ $json.output.order_id }}"
+          },
+          "matchingColumns": [
+            "Order ID"
+          ],
+          "schema": [
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Contact Number",
+              "displayName": "Contact Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Product",
+              "displayName": "Product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment mode",
+              "displayName": "Payment mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Delivery Address",
+              "displayName": "Delivery Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estimated Delivery Date",
+              "displayName": "Estimated Delivery Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Feedback",
+              "displayName": "Feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Response to Customer",
+              "displayName": "Last Response to Customer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "0bb20850-e1ee-40d2-bf29-4449a14f9374",
+      "name": "Add Order Feedback",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -768,
+        464
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JA29MwWbC2548xRn",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "+12565619131",
+        "to": "=+{{ $json['Contact Number'] }}",
+        "message": "=Thankyou for your feedback! We would love to serve you again!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        464
+      ],
+      "id": "12385e63-8e12-4f5c-81bb-34ee22a9a68a",
+      "name": "Acknowledgement Message",
+      "credentials": {
+        "twilioApi": {
+          "id": "2Oq4YOq50S45XyJk",
+          "name": "Twilio account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "+12565619131",
+        "to": "+919967622465",
+        "message": "=ATTENTION REQUIRED! {{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        688
+      ],
+      "id": "c302d463-6701-4529-9aa4-e0f99360f01a",
+      "name": "Send Alert to Admin",
+      "credentials": {
+        "twilioApi": {
+          "id": "I0nqH7oWnqpmAsR1",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "34d36353-d6f6-4ee4-84d2-ab396265f877",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2752,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1IvChsHwG-CVwqjugFmpWhBbXxQ0C2x1z",
+          "mode": "list",
+          "cachedResultName": "FAQ.json",
+          "cachedResultUrl": "https://drive.google.com/file/d/1IvChsHwG-CVwqjugFmpWhBbXxQ0C2x1z/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2544,
+        928
+      ],
+      "id": "c0a8c923-b05b-41da-bbd9-acb39ed8ff8f",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "qtKBQ6F7A9OYykls",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "small-business-automation",
+          "mode": "list",
+          "cachedResultName": "small-business-automation"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        -2336,
+        928
+      ],
+      "id": "2705a349-e162-4a69-bb0f-1ea1bf1ae7ea",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "6wkDaUPIxQewX2TR",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "dimensions": 512
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -2336,
+        1072
+      ],
+      "id": "3dfcd062-98d6-4af9-bbe5-f3cbbf8e05cf",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "JZP4y36yvMSn6Mju",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        -2160,
+        1072
+      ],
+      "id": "747e2fb9-acd8-4b79-9650-a2814496ab03",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Given the context below, answer the user query to the best of your ability. Answer the newest queries.\nResponse only in following format:\n{\ncontact_number: {{ $json.output.contact_number }},\nresponse: // response that you generate via RAG tool or suggested response - {{ $json.output.response_to_customer }}\n}\n<Context>{{ $json.output.conversation_history }}</Context>",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "b06f2253-4c86-48fa-9e09-8d6733430096",
+      "name": "Retriever Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -768,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        1232
+      ],
+      "id": "ed567f31-2810-4661-b4e7-db8466471a3d",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "UGK7JqMJ7Xo4PZqk",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "automation-chats",
+        "fields": "=user_id,profile_name,message,from_number,to_number,sms_status,message_type,channel_metadata,timestamp",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -2096,
+        192
+      ],
+      "id": "f61289fa-4bb7-4371-ac3c-f9fbfdc202a9",
+      "name": "Save message in DB",
+      "credentials": {
+        "mongoDb": {
+          "id": "9HxBN23c0P8fhIp0",
+          "name": "MongoDB account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "automation-chats",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        336
+      ],
+      "id": "a43de349-aebc-40a9-ac4f-1783185b9847",
+      "name": "Insert documents",
+      "credentials": {
+        "mongoDb": {
+          "id": "9HxBN23c0P8fhIp0",
+          "name": "MongoDB account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "automation-chats",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -1264,
+        992
+      ],
+      "id": "cc87d9ab-db69-401f-93cf-775d834ca2d8",
+      "name": "Insert documents1",
+      "credentials": {
+        "mongoDb": {
+          "id": "9HxBN23c0P8fhIp0",
+          "name": "MongoDB account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ff5750c1-ad49-4160-9494-23966c12f9f3",
+              "name": "user_id",
+              "value": "={{ $json.body.WaId }}",
+              "type": "string"
+            },
+            {
+              "id": "a1024ddd-2aa0-4280-b51d-647fefbc9ad7",
+              "name": "profile_name",
+              "value": "={{ $json.body.ProfileName }}",
+              "type": "string"
+            },
+            {
+              "id": "b10f9b21-aedd-4cb1-9f16-12fbbd0adc65",
+              "name": "message",
+              "value": "={{ $json.body.Body }}",
+              "type": "string"
+            },
+            {
+              "id": "bcab856b-f0c5-444d-86b4-0560c1692b8b",
+              "name": "from_number",
+              "value": "={{ $json.body.From }}",
+              "type": "string"
+            },
+            {
+              "id": "498699ca-ecca-46dc-b36d-b00f7e5a6c6a",
+              "name": "to_number",
+              "value": "={{ $json.body.To }}",
+              "type": "string"
+            },
+            {
+              "id": "37afb610-016a-44d8-8d30-6080f14a4ab2",
+              "name": "sms_status",
+              "value": "={{ $json.body.SmsStatus }}",
+              "type": "string"
+            },
+            {
+              "id": "ada3cd17-b162-4824-87a8-8a92d0e446cf",
+              "name": "message_type",
+              "value": "={{ $json.body.MessageType }}",
+              "type": "string"
+            },
+            {
+              "id": "ac8d9a58-2be4-4c78-b544-a358d4759c0b",
+              "name": "channel_metadata",
+              "value": "={{ $json.body.ChannelMetadata }}",
+              "type": "string"
+            },
+            {
+              "id": "d034168d-3542-4263-957f-bf2db16f0ed0",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2272,
+        192
+      ],
+      "id": "103ee997-1a9c-47e2-8442-db2b02f466a5",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ff5750c1-ad49-4160-9494-23966c12f9f3",
+              "name": "user_id",
+              "value": "={{ $json.body.WaId }}",
+              "type": "string"
+            },
+            {
+              "id": "a1024ddd-2aa0-4280-b51d-647fefbc9ad7",
+              "name": "profile_name",
+              "value": "={{ $json.body.ProfileName }}",
+              "type": "string"
+            },
+            {
+              "id": "b10f9b21-aedd-4cb1-9f16-12fbbd0adc65",
+              "name": "message",
+              "value": "={{ $json.body.Body }}",
+              "type": "string"
+            },
+            {
+              "id": "bcab856b-f0c5-444d-86b4-0560c1692b8b",
+              "name": "from_number",
+              "value": "={{ $json.body.From }}",
+              "type": "string"
+            },
+            {
+              "id": "498699ca-ecca-46dc-b36d-b00f7e5a6c6a",
+              "name": "to_number",
+              "value": "={{ $json.body.To }}",
+              "type": "string"
+            },
+            {
+              "id": "37afb610-016a-44d8-8d30-6080f14a4ab2",
+              "name": "sms_status",
+              "value": "={{ $json.body.SmsStatus }}",
+              "type": "string"
+            },
+            {
+              "id": "ada3cd17-b162-4824-87a8-8a92d0e446cf",
+              "name": "message_type",
+              "value": "={{ $json.body.MessageType }}",
+              "type": "string"
+            },
+            {
+              "id": "ac8d9a58-2be4-4c78-b544-a358d4759c0b",
+              "name": "channel_metadata",
+              "value": "={{ $json.body.ChannelMetadata }}",
+              "type": "string"
+            },
+            {
+              "id": "d034168d-3542-4263-957f-bf2db16f0ed0",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        336
+      ],
+      "id": "338ba0a3-3e4b-4fec-98f6-e044b820baa1",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ff5750c1-ad49-4160-9494-23966c12f9f3",
+              "name": "user_id",
+              "value": "={{ $json.body.WaId }}",
+              "type": "string"
+            },
+            {
+              "id": "a1024ddd-2aa0-4280-b51d-647fefbc9ad7",
+              "name": "profile_name",
+              "value": "={{ $json.body.ProfileName }}",
+              "type": "string"
+            },
+            {
+              "id": "b10f9b21-aedd-4cb1-9f16-12fbbd0adc65",
+              "name": "message",
+              "value": "={{ $json.body.Body }}",
+              "type": "string"
+            },
+            {
+              "id": "bcab856b-f0c5-444d-86b4-0560c1692b8b",
+              "name": "from_number",
+              "value": "={{ $json.body.From }}",
+              "type": "string"
+            },
+            {
+              "id": "498699ca-ecca-46dc-b36d-b00f7e5a6c6a",
+              "name": "to_number",
+              "value": "={{ $json.body.To }}",
+              "type": "string"
+            },
+            {
+              "id": "37afb610-016a-44d8-8d30-6080f14a4ab2",
+              "name": "sms_status",
+              "value": "={{ $json.body.SmsStatus }}",
+              "type": "string"
+            },
+            {
+              "id": "ada3cd17-b162-4824-87a8-8a92d0e446cf",
+              "name": "message_type",
+              "value": "={{ $json.body.MessageType }}",
+              "type": "string"
+            },
+            {
+              "id": "ac8d9a58-2be4-4c78-b544-a358d4759c0b",
+              "name": "channel_metadata",
+              "value": "={{ $json.body.ChannelMetadata }}",
+              "type": "string"
+            },
+            {
+              "id": "d034168d-3542-4263-957f-bf2db16f0ed0",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1264,
+        816
+      ],
+      "id": "bf907e2e-5b0f-4001-a864-d13a01571387",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "collection": "automation-chats",
+        "options": {
+          "sort": "{ \"timestamp\": 1 }"
+        },
+        "query": "={\n  \"user_id\": \"{{ $json.body.WaId }}\"\n}"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        -2096,
+        352
+      ],
+      "id": "621f9912-8512-478a-870c-0c0387069988",
+      "name": "Find documents",
+      "credentials": {
+        "mongoDb": {
+          "id": "9HxBN23c0P8fhIp0",
+          "name": "MongoDB account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst conversationHistory = allItems.map(\n  item => `[${item.json.timestamp}] ${item.json.sms_status == \"received\" ? \"Customer\" : \"Agent\"}: ${item.json.message}`\n).join('\\n');\n\nreturn [\n  {\n    json: {\n      user_id: allItems[0].json.user_id,\n      profile_name: allItems[0].json.profile_name,\n      conversation_history: conversationHistory,\n      from_number: allItems[0].json.from_number,\n      to_number: allItems[0].json.to_number,\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1888,
+        352
+      ],
+      "id": "779c5f84-6a93-464d-8b5f-8b68af1ecfbf",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "from": "+12565619131",
+        "to": "=+{{ $json.output.contact_number }}",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        1056
+      ],
+      "id": "808cfbea-8643-46ca-88ac-84f60b435931",
+      "name": "Send query answer to Customer",
+      "credentials": {
+        "twilioApi": {
+          "id": "2Oq4YOq50S45XyJk",
+          "name": "Twilio account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"contact_number\": 919999999999,\n\t\"response\": \"Response generated here\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -592,
+        1232
+      ],
+      "id": "f5c693be-c748-48ac-a4cd-d0d5e9e94ca5",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        1392
+      ],
+      "id": "fd1b1689-5d1e-460b-acbf-a90146b33da4",
+      "name": "Answer questions with a vector store"
+    },
+    {
+      "parameters": {
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "small-business-automation",
+          "mode": "list",
+          "cachedResultName": "small-business-automation"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        -992,
+        1520
+      ],
+      "id": "ba572c96-387b-49ee-a325-8d3921997878",
+      "name": "Pinecone Vector Store1",
+      "credentials": {
+        "pineconeApi": {
+          "id": "6wkDaUPIxQewX2TR",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -992,
+        1648
+      ],
+      "id": "b82e69a5-103d-49c2-9815-17138eda7327",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "JZP4y36yvMSn6Mju",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        1520
+      ],
+      "id": "222dfb13-9573-437c-83a9-d5b0e25cf5fb",
+      "name": "Google Gemini Chat Model4",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "UGK7JqMJ7Xo4PZqk",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Vertex Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check Message Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Message Exists": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait for 60s to batch messages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sales Rep Conversational Agent": {
+      "main": [
+        [
+          {
+            "node": "Is Conversation Over?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Sales Rep Conversational Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Sales Rep Conversational Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for 60s to batch messages": {
+      "main": [
+        [
+          {
+            "node": "Find documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Conversation Over?": {
+      "main": [
+        [
+          {
+            "node": "Switch on Intent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send reply to customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch on Intent": {
+      "main": [
+        [
+          {
+            "node": "Add Order to Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find Order in Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add Order Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Chat History for Admin",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Chat History for Admin",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Chat History for Admin",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retriever Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retriever Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Order to Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Send Order Confirmation to Customer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send New Order Notification to Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Order in Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Send Tracking Info to Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Chat History for Admin": {
+      "main": [
+        [
+          {
+            "node": "Send Alert to Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send reply to customer": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Order Confirmation to Customer": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Tracking Info to Customer": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarize Chat History for Admin",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Order Feedback": {
+      "main": [
+        [
+          {
+            "node": "Acknowledgement Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acknowledgement Message": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retriever Agent": {
+      "main": [
+        [
+          {
+            "node": "Send query answer to Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Retriever Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Save message in DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Insert documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Insert documents1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find documents": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Sales Rep Conversational Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Retriever Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer questions with a vector store": {
+      "ai_tool": [
+        [
+          {
+            "node": "Retriever Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store1": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Answer questions with a vector store",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Answer questions with a vector store",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "33ce4440-a659-4116-a226-de9aa7bd8383",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8ebc15bf713f3c5f85cfcba09dd8507a7ec56bd52c0b57cbff57fd31a73a4d5a"
+  },
+  "id": "ezMVXNSHZcTKH5qq",
+  "tags": []
+}
